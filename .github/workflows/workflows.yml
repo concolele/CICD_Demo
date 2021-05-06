@@ -22,18 +22,38 @@
 # 4. Store an IAM user access key in GitHub Actions secrets named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
 #    See the documentation for each action used below for the recommended IAM policies for this IAM user,
 #    and best practices on handling the access key credentials.
+name: cicd_demo
 
 on:
   push:
     branches: 
      - main
 
-name: Deploy to Amazon ECS
-
-jobs:
-  deploy:
-    name: Deploy
+jobs: :
+  run-ci:
+  runs-on: ubuntu-latest
+  
+  steps:
+   - name: Setup golang
+     uses: actions/setup-go@v2
+     with:
+       go-version: "^1.15"
+       
+   - name: Checkout source code
+     uses: actions/checkout@v2
+     
+   # - name: golangci-lint
+   #   uses: golangci/golangci-lint-action@v2
+   #   with:
+   #     version: v1.29
+       
+   # - name: Run unit test
+   #     run: go test -v ./...
+       
+  run-cd:
+    needs: run-ci
     runs-on: ubuntu-latest
+    timeout-minutes: 300
 
     steps:
     - name: Checkout
@@ -56,12 +76,15 @@ jobs:
         DOCKER_BUILDKIT: 1
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: cicd_demo
-        IMAGE_TAG: ${{ github.sha }}
+        IMAGE_TAG: ${{ git rev-parse --short HEAD }}
+        #IMAGE_TAG: ${{ github.sha }}
       run: |
         # Build a docker container and
         # push it to ECR so that it can
         # be deployed to ECS.
-        docker build --cache-from=$ECR_REGISTRY/$ECR_REPOSITORY:latest --build-arg BUILDKIT_INLINE_CACHE=1 -f Dockerfile -t $ECR_REPOSITORY .
+        docker build \
+            --cache-from=$ECR_REGISTRY/$ECR_REPOSITORY:latest --build-arg BUILDKIT_INLINE_CACHE=1 \
+            -f "./Dockerfile" .
         docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
