@@ -29,7 +29,7 @@ on:
     branches: 
      - main
 
-jobs: :
+jobs:
   run-ci:
   runs-on: ubuntu-latest
   
@@ -53,7 +53,6 @@ jobs: :
   run-cd:
     needs: run-ci
     runs-on: ubuntu-latest
-    timeout-minutes: 300
 
     steps:
     - name: Checkout
